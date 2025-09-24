@@ -1,0 +1,122 @@
+# Datasets de League of Legends Worlds
+champions_stats:
+  type: pandas.CSVDataset
+  filepath: data/01_raw/champions_stats.csv
+  load_args:
+    encoding: utf-8
+
+matchs_stats:
+  type: pandas.CSVDataset
+  filepath: data/01_raw/matchs_stats.csv
+  load_args:
+    encoding: utf-8
+
+players_stats:
+  type: pandas.CSVDataset
+  filepath: data/01_raw/players_stats.csv
+  load_args:
+    encoding: utf-8
+
+# Datasets procesados para análisis
+champions_analysis:
+  type: pandas.CSVDataset
+  filepath: data/02_intermediate/champions_analysis.csv
+  load_args:
+    encoding: latin-1
+  save_args:
+    index: false
+    encoding: latin-1
+
+matchs_analysis:
+  type: pandas.CSVDataset
+  filepath: data/02_intermediate/matchs_analysis.csv
+  load_args:
+    encoding: latin-1
+  save_args:
+    index: false
+    encoding: latin-1
+
+players_analysis:
+  type: pandas.CSVDataset
+  filepath: data/02_intermediate/players_analysis.csv
+  load_args:
+    encoding: latin-1
+  save_args:
+    index: false
+    encoding: latin-1
+
+# Dataset consolidado
+worlds_consolidated:
+  type: pandas.CSVDataset
+  filepath: data/03_primary/worlds_consolidated.csv
+  load_args:
+    encoding: latin-1
+  save_args:
+    index: false
+    encoding: latin-1
+
+# Datasets limpios y preparados
+champions_clean:
+  type: pandas.CSVDataset
+  filepath: data/02_intermediate/champions_clean.csv
+  load_args:
+    encoding: latin-1
+  save_args:
+    index: false
+    encoding: latin-1
+
+matches_clean:
+  type: pandas.CSVDataset
+  filepath: data/02_intermediate/matches_clean.csv
+  load_args:
+    encoding: latin-1
+  save_args:
+    index: false
+    encoding: latin-1
+
+players_clean:
+  type: pandas.CSVDataset
+  filepath: data/02_intermediate/players_clean.csv
+  load_args:
+    encoding: latin-1
+  save_args:
+    index: false
+    encoding: latin-1
+
+# Datasets con características derivadas
+champions_features:
+  type: pandas.CSVDataset
+  filepath: data/04_feature/champions_features.csv
+  load_args:
+    encoding: latin-1
+  save_args:
+    index: false
+    encoding: latin-1
+
+matches_features:
+  type: pandas.CSVDataset
+  filepath: data/04_feature/matches_features.csv
+  load_args:
+    encoding: latin-1
+  save_args:
+    index: false
+    encoding: latin-1
+
+players_features:
+  type: pandas.CSVDataset
+  filepath: data/04_feature/players_features.csv
+  load_args:
+    encoding: latin-1
+  save_args:
+    index: false
+    encoding: latin-1
+
+# Dataset final consolidado
+worlds_final:
+  type: pandas.CSVDataset
+  filepath: data/05_model_input/worlds_final.csv
+  load_args:
+    encoding: latin-1
+  save_args:
+    index: false
+    encoding: latin-1
