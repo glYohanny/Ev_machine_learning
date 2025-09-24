@@ -129,14 +129,20 @@ dmypy.json
 .pyre/
 
 # Kedro specific
-data/01_raw/
-data/02_intermediate/
-data/03_primary/
-data/04_feature/
-data/05_model_input/
-data/06_models/
-data/07_model_output/
-data/08_reporting/
+# Ignorar archivos de datos grandes pero permitir archivos pequeños y configuración
+data/01_raw/*.csv
+data/01_raw/*.json
+data/01_raw/*.txt
+data/02_intermediate/*.csv
+data/03_primary/*.csv
+data/04_feature/*.csv
+data/05_model_input/*.csv
+data/06_models/*.pkl
+data/06_models/*.joblib
+data/07_model_output/*.csv
+data/07_model_output/*.json
+data/08_reporting/*.html
+data/08_reporting/*.pdf
 *.log
 .kedro/
 
