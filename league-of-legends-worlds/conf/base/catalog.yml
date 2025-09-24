@@ -1,122 +1,173 @@
-# Datasets de League of Legends Worlds
-champions_stats:
-  type: pandas.CSVDataset
+# Datos originales (raw)
+champions_raw:
+  type: pandas.CSVDataSet
   filepath: data/01_raw/champions_stats.csv
   load_args:
-    encoding: utf-8
+    encoding: latin-1
+  save_args:
+    encoding: latin-1
+    index: false
 
-matchs_stats:
-  type: pandas.CSVDataset
+matches_raw:
+  type: pandas.CSVDataSet
   filepath: data/01_raw/matchs_stats.csv
   load_args:
-    encoding: utf-8
+    encoding: latin-1
+  save_args:
+    encoding: latin-1
+    index: false
 
-players_stats:
-  type: pandas.CSVDataset
+players_raw:
+  type: pandas.CSVDataSet
   filepath: data/01_raw/players_stats.csv
   load_args:
-    encoding: utf-8
-
-# Datasets procesados para análisis
-champions_analysis:
-  type: pandas.CSVDataset
-  filepath: data/02_intermediate/champions_analysis.csv
-  load_args:
     encoding: latin-1
   save_args:
+    encoding: latin-1
     index: false
-    encoding: latin-1
 
-matchs_analysis:
-  type: pandas.CSVDataset
-  filepath: data/02_intermediate/matchs_analysis.csv
-  load_args:
-    encoding: latin-1
-  save_args:
-    index: false
-    encoding: latin-1
-
-players_analysis:
-  type: pandas.CSVDataset
-  filepath: data/02_intermediate/players_analysis.csv
-  load_args:
-    encoding: latin-1
-  save_args:
-    index: false
-    encoding: latin-1
-
-# Dataset consolidado
-worlds_consolidated:
-  type: pandas.CSVDataset
-  filepath: data/03_primary/worlds_consolidated.csv
-  load_args:
-    encoding: latin-1
-  save_args:
-    index: false
-    encoding: latin-1
-
-# Datasets limpios y preparados
+# Datos intermedios (cleaned)
 champions_clean:
-  type: pandas.CSVDataset
+  type: pandas.CSVDataSet
   filepath: data/02_intermediate/champions_clean.csv
   load_args:
     encoding: latin-1
   save_args:
-    index: false
     encoding: latin-1
+    index: false
 
 matches_clean:
-  type: pandas.CSVDataset
+  type: pandas.CSVDataSet
   filepath: data/02_intermediate/matches_clean.csv
   load_args:
     encoding: latin-1
   save_args:
-    index: false
     encoding: latin-1
+    index: false
 
 players_clean:
-  type: pandas.CSVDataset
+  type: pandas.CSVDataSet
   filepath: data/02_intermediate/players_clean.csv
   load_args:
     encoding: latin-1
   save_args:
-    index: false
     encoding: latin-1
+    index: false
 
-# Datasets con características derivadas
+# Datos primarios (consolidated)
+worlds_consolidated:
+  type: pandas.CSVDataSet
+  filepath: data/03_primary/worlds_consolidated.csv
+  load_args:
+    encoding: latin-1
+  save_args:
+    encoding: latin-1
+    index: false
+
+# Features engineering
 champions_features:
-  type: pandas.CSVDataset
+  type: pandas.CSVDataSet
   filepath: data/04_feature/champions_features.csv
   load_args:
     encoding: latin-1
   save_args:
-    index: false
     encoding: latin-1
+    index: false
 
 matches_features:
-  type: pandas.CSVDataset
+  type: pandas.CSVDataSet
   filepath: data/04_feature/matches_features.csv
   load_args:
     encoding: latin-1
   save_args:
-    index: false
     encoding: latin-1
+    index: false
 
 players_features:
-  type: pandas.CSVDataset
+  type: pandas.CSVDataSet
   filepath: data/04_feature/players_features.csv
   load_args:
     encoding: latin-1
   save_args:
-    index: false
     encoding: latin-1
+    index: false
 
-# Dataset final consolidado
+# Model input
 worlds_final:
-  type: pandas.CSVDataset
+  type: pandas.CSVDataSet
   filepath: data/05_model_input/worlds_final.csv
   load_args:
     encoding: latin-1
   save_args:
-    index: false
     encoding: latin-1
+    index: false
+
+# Reportes
+data_quality_report:
+  type: text.TextDataSet
+  filepath: data/08_reporting/data_quality_report.txt
+
+eda_report:
+  type: text.TextDataSet
+  filepath: data/08_reporting/eda_report.txt
+
+# Datos en múltiples formatos (requisito de la rúbrica)
+champions_json:
+  type: pandas.JSONDataSet
+  filepath: data/01_raw/champions_stats.json
+  load_args:
+    orient: records
+  save_args:
+    orient: records
+    index: false
+
+matches_json:
+  type: pandas.JSONDataSet
+  filepath: data/01_raw/matchs_stats.json
+  load_args:
+    orient: records
+  save_args:
+    orient: records
+    index: false
+
+players_json:
+  type: pandas.JSONDataSet
+  filepath: data/01_raw/players_stats.json
+  load_args:
+    orient: records
+  save_args:
+    orient: records
+    index: false
+
+champions_txt:
+  type: pandas.CSVDataSet
+  filepath: data/01_raw/champions_stats.txt
+  load_args:
+    sep: '\t'
+    encoding: utf-8
+  save_args:
+    sep: '\t'
+    encoding: utf-8
+    index: false
+
+matches_txt:
+  type: pandas.CSVDataSet
+  filepath: data/01_raw/matchs_stats.txt
+  load_args:
+    sep: '\t'
+    encoding: utf-8
+  save_args:
+    sep: '\t'
+    encoding: utf-8
+    index: false
+
+players_txt:
+  type: pandas.CSVDataSet
+  filepath: data/01_raw/players_stats.txt
+  load_args:
+    sep: '\t'
+    encoding: utf-8
+  save_args:
+    sep: '\t'
+    encoding: utf-8
+    index: false

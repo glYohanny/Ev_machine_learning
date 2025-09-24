@@ -1,30 +1,22 @@
-"""Project pipelines."""
-from __future__ import annotations
+"""
+Registry de pipelines para League of Legends Worlds.
+"""
 
-from kedro.framework.project import find_pipelines
 from kedro.pipeline import Pipeline
+from .data_exploration import create_data_exploration_pipeline
+from .data_preparation import create_data_preparation_pipeline
 
 
-def register_pipelines() -> dict[str, Pipeline]:
-    """Register the project's pipelines.
-
-    Returns:
-        A mapping from pipeline names to ``Pipeline`` objects.
+def register_pipelines() -> dict:
     """
-    pipelines = find_pipelines()
+    Registra todos los pipelines disponibles.
     
-    # Agregar pipelines específicos de CRISP-DM
-    from .pipelines.data_exploration import create_pipeline as create_data_exploration_pipeline
-    from .pipelines.data_preparation import create_pipeline as create_data_preparation_pipeline
-    
-    pipelines["data_exploration"] = create_data_exploration_pipeline()
-    pipelines["data_preparation"] = create_data_preparation_pipeline()
-    
-    # Pipeline completo que incluye exploración y preparación
-    pipelines["crisp_dm_etapas_1_3"] = (
-        create_data_exploration_pipeline() + 
-        create_data_preparation_pipeline()
-    )
-    
-    pipelines["__default__"] = pipelines["crisp_dm_etapas_1_3"]
-    return pipelines
+    Returns:
+        dict: Diccionario con pipelines registrados
+    """
+    return {
+        "data_exploration": create_data_exploration_pipeline(),
+        "data_preparation": create_data_preparation_pipeline(),
+        "full_pipeline": create_data_exploration_pipeline() + create_data_preparation_pipeline(),
+        "__default__": create_data_exploration_pipeline() + create_data_preparation_pipeline()
+    }

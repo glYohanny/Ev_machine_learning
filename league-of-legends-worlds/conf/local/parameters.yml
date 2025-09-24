@@ -1,0 +1,17 @@
+# Configuración local (no versionada)
+# Este archivo contiene configuraciones específicas del entorno local
+
+# Credenciales (si las necesitas)
+# api_key: "tu_api_key_aqui"
+
+# Configuraciones específicas del entorno local
+local_settings:
+  debug_mode: true
+  log_level: DEBUG
+  
+# Parámetros específicos del entorno local
+local_parameters:
+  data_cleaning:
+    min_games_threshold: 3  # Más permisivo en desarrollo
+  modeling:
+    test_size: 0.3  # Más datos para testing en desarrollo

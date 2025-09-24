@@ -1,53 +1,45 @@
-"""Pipeline para exploración y análisis inicial de datos de League of Legends Worlds."""
+"""
+Pipeline de exploración de datos para League of Legends Worlds.
+"""
 
 from kedro.pipeline import Pipeline, node
 from .nodes import (
-    explore_champions_data,
-    explore_matches_data,
-    explore_players_data,
-    generate_data_summary,
-    create_data_quality_report
+    load_raw_data,
+    analyze_data_quality,
+    generate_eda_report
 )
 
 
-def create_pipeline(**kwargs) -> Pipeline:
-    """Crear pipeline de exploración de datos."""
+def create_data_exploration_pipeline() -> Pipeline:
+    """
+    Crea el pipeline de exploración de datos.
+    
+    Returns:
+        Pipeline: Pipeline de Kedro para exploración
+    """
     return Pipeline(
         [
             node(
-                func=explore_champions_data,
-                inputs="champions_stats",
-                outputs="champions_analysis",
-                name="explore_champions_data_node",
-                tags=["exploration", "champions"]
+                func=load_raw_data,
+                inputs=None,
+                outputs=["champions_raw", "matches_raw", "players_raw"],
+                name="load_raw_data_node",
+                tags=["data_loading"]
             ),
             node(
-                func=explore_matches_data,
-                inputs="matchs_stats",
-                outputs="matchs_analysis",
-                name="explore_matches_data_node",
-                tags=["exploration", "matches"]
+                func=analyze_data_quality,
+                inputs=["champions_raw", "matches_raw", "players_raw", "params:data_cleaning"],
+                outputs="data_quality_report",
+                name="analyze_data_quality_node",
+                tags=["data_quality"]
             ),
             node(
-                func=explore_players_data,
-                inputs="players_stats",
-                outputs="players_analysis",
-                name="explore_players_data_node",
-                tags=["exploration", "players"]
-            ),
-            node(
-                func=generate_data_summary,
-                inputs=["champions_stats", "matchs_stats", "players_stats"],
-                outputs="worlds_consolidated",
-                name="generate_data_summary_node",
-                tags=["exploration", "summary"]
-            ),
-            node(
-                func=create_data_quality_report,
-                inputs=["champions_stats", "matchs_stats", "players_stats"],
-                outputs=None,
-                name="create_data_quality_report_node",
-                tags=["exploration", "quality"]
-            ),
-        ]
+                func=generate_eda_report,
+                inputs=["champions_raw", "matches_raw", "players_raw", "params:analysis"],
+                outputs="eda_report",
+                name="generate_eda_report_node",
+                tags=["eda"]
+            )
+        ],
+        tags=["data_exploration"]
     )

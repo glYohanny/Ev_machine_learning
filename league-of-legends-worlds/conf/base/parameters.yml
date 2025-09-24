@@ -1,0 +1,33 @@
+# Parámetros del proyecto League of Legends Worlds
+# Estos parámetros pueden ser sobrescritos en conf/local/parameters.yml
+
+# Parámetros de limpieza de datos
+data_cleaning:
+  min_games_threshold: 5
+  min_win_rate: 0
+  max_win_rate: 100
+  fill_missing_with: 0
+  
+# Parámetros de feature engineering
+feature_engineering:
+  kda_weight: 1.0
+  win_rate_weight: 1.0
+  efficiency_threshold: 2.0
+  
+# Parámetros de análisis
+analysis:
+  correlation_threshold: 0.5
+  outlier_threshold: 3.0
+  confidence_level: 0.95
+  
+# Parámetros de modelado
+modeling:
+  test_size: 0.2
+  random_state: 42
+  cv_folds: 5
+  
+# Parámetros de reportes
+reporting:
+  figure_dpi: 300
+  figure_size: [12, 8]
+  color_palette: "husl"

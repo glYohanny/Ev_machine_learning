@@ -1,101 +1,189 @@
-# League_of_Legends_Worlds
+# 🏆 League of Legends Worlds - Análisis de Datos con Kedro
 
-[![Powered by Kedro](https://img.shields.io/badge/powered_by-kedro-ffc900?logo=kedro)](https://kedro.org)
+## 📋 Descripción del Proyecto
 
-## Overview
+Este proyecto implementa un análisis completo de datos de League of Legends Worlds Championship siguiendo la metodología **CRISP-DM** y utilizando **Kedro** como framework de pipeline de datos.
 
-This is your new Kedro project, which was generated using `kedro 1.0.0`.
+## 🎯 Objetivos
 
-Take a look at the [Kedro documentation](https://docs.kedro.org) to get started.
+- **Análisis de rendimiento**: Identificar patrones de éxito en equipos y jugadores
+- **Predicción de resultados**: Desarrollar modelos de ML para predecir victorias
+- **Análisis del meta**: Entender la evolución del meta competitivo
+- **Insights accionables**: Generar recomendaciones para equipos profesionales
 
-## Rules and guidelines
-
-In order to get the best out of the template:
-
-* Don't remove any lines from the `.gitignore` file we provide
-* Make sure your results can be reproduced by following a data engineering convention
-* Don't commit data to your repository
-* Don't commit any credentials or your local configuration to your repository. Keep all your credentials and local configuration in `conf/local/`
-
-## How to install dependencies
-
-Declare any dependencies in `requirements.txt` for `pip` installation.
-
-To install them, run:
+## 🏗️ Arquitectura del Proyecto
 
 ```
+league-of-legends-worlds/
+├── conf/                    # Configuración de Kedro
+│   ├── base/
+│   │   ├── catalog.yml     # Catálogo de datasets
+│   │   └── parameters.yml  # Parámetros del proyecto
+│   └── local/              # Configuración local
+├── data/                   # Datos organizados por etapas
+│   ├── 01_raw/            # Datos originales
+│   ├── 02_intermediate/   # Datos procesados
+│   ├── 03_primary/        # Datos consolidados
+│   ├── 04_feature/        # Características derivadas
+│   ├── 05_model_input/    # Datos para ML
+│   ├── 06_models/         # Modelos entrenados
+│   ├── 07_model_output/   # Resultados de modelos
+│   └── 08_reporting/      # Reportes generados
+├── notebooks/             # Jupyter notebooks
+├── src/                   # Código fuente
+│   └── league_of_legends_worlds/
+│       └── pipelines/     # Pipelines de Kedro
+└── tests/                 # Tests unitarios
+```
+
+## 🚀 Instalación y Configuración
+
+### 1. Clonar el repositorio
+```bash
+git clone <repository-url>
+cd league-of-legends-worlds
+```
+
+### 2. Crear entorno virtual
+```bash
+python -m venv venv
+source venv/bin/activate  # En Windows: venv\Scripts\activate
+```
+
+### 3. Instalar dependencias
+```bash
 pip install -r requirements.txt
 ```
 
-## How to run your Kedro pipeline
-
-You can run your Kedro project with:
-
-```
-kedro run
+### 4. Configurar Kedro
+```bash
+kedro install
 ```
 
-## How to test your Kedro project
+## 📊 Datasets
 
-Have a look at the file `tests/test_run.py` for instructions on how to write your tests. You can run your tests as follows:
+El proyecto utiliza tres datasets principales:
 
-```
-pytest
-```
+1. **champions_stats.csv**: Estadísticas de campeones por temporada
+2. **matchs_stats.csv**: Datos de partidos individuales
+3. **players_stats.csv**: Estadísticas de jugadores por temporada
 
-You can configure the coverage threshold in your project's `pyproject.toml` file under the `[tool.coverage.report]` section.
+### Formatos Soportados
+- CSV (formato principal)
+- JSON (para intercambio de datos)
+- TXT (formato tabular)
 
+## 🔄 Pipelines Disponibles
 
-## Project dependencies
-
-To see and update the dependency requirements for your project use `requirements.txt`. You can install the project requirements with `pip install -r requirements.txt`.
-
-[Further information about project dependencies](https://docs.kedro.org/en/stable/kedro_project_setup/dependencies.html#project-specific-dependencies)
-
-## How to work with Kedro and notebooks
-
-> Note: Using `kedro jupyter` or `kedro ipython` to run your notebook provides these variables in scope: `context`, 'session', `catalog`, and `pipelines`.
->
-> Jupyter, JupyterLab, and IPython are already included in the project requirements by default, so once you have run `pip install -r requirements.txt` you will not need to take any extra steps before you use them.
-
-### Jupyter
-To use Jupyter notebooks in your Kedro project, you need to install Jupyter:
-
-```
-pip install jupyter
+### Pipeline de Exploración de Datos
+```bash
+kedro run --pipeline data_exploration
 ```
 
-After installing Jupyter, you can start a local notebook server:
-
-```
-kedro jupyter notebook
-```
-
-### JupyterLab
-To use JupyterLab, you need to install it:
-
-```
-pip install jupyterlab
+### Pipeline de Preparación de Datos
+```bash
+kedro run --pipeline data_preparation
 ```
 
-You can also start JupyterLab:
-
-```
-kedro jupyter lab
-```
-
-### IPython
-And if you want to run an IPython session:
-
-```
-kedro ipython
+### Pipeline Completo
+```bash
+kedro run --pipeline full_pipeline
 ```
 
-### How to ignore notebook output cells in `git`
-To automatically strip out all output cell contents before committing to `git`, you can use tools like [`nbstripout`](https://github.com/kynan/nbstripout). For example, you can add a hook in `.git/config` with `nbstripout --install`. This will run `nbstripout` before anything is committed to `git`.
+## 📈 Análisis Implementados
 
-> *Note:* Your output cells will be retained locally.
+### 1. Análisis Univariado
+- Estadísticas descriptivas (media, mediana, desviación estándar)
+- Análisis de distribuciones (asimetría, curtosis)
+- Detección de valores atípicos
 
-## Package your Kedro project
+### 2. Análisis Bivariado
+- Matrices de correlación
+- Análisis de relaciones entre variables
+- Identificación de correlaciones fuertes
 
-[Further information about building project documentation and packaging your project](https://docs.kedro.org/en/stable/tutorial/package_a_project.html)
+### 3. Análisis Multivariado
+- Análisis de Componentes Principales (PCA)
+- Clustering con K-Means
+- Reducción de dimensionalidad
+
+### 4. Feature Engineering
+- Cálculo de KDA mejorado
+- Métricas de eficiencia
+- Categorización por rendimiento
+- Indicadores de impacto
+
+## 🎯 Targets para Machine Learning
+
+### Regresión
+- **Champions**: `win_rate` (predecir tasa de victorias)
+- **Matches**: `duration` (predecir duración del partido)
+- **Players**: `player_efficiency` (predecir eficiencia)
+
+### Clasificación
+- **Champions**: `popularity_tier` (tier de popularidad)
+- **Matches**: `game_length_category` (categoría de duración)
+- **Players**: `performance_tier` (tier de rendimiento)
+
+### Clasificación Binaria
+- **Champions**: `win` (victoria/derrota)
+- **Players**: `win` (victoria/derrota)
+
+## 🛠️ Tecnologías Utilizadas
+
+- **Kedro**: Framework de pipeline de datos
+- **Pandas**: Manipulación de datos
+- **NumPy**: Operaciones numéricas
+- **Scikit-learn**: Machine Learning
+- **Matplotlib/Seaborn**: Visualizaciones
+- **Jupyter**: Notebooks interactivos
+
+## 📝 Metodología CRISP-DM
+
+El proyecto sigue las 6 etapas de CRISP-DM:
+
+1. ✅ **Comprensión del Negocio**: Objetivos y criterios de éxito definidos
+2. ✅ **Comprensión de los Datos**: Análisis exploratorio completo
+3. ✅ **Preparación de los Datos**: Limpieza y feature engineering
+4. 🔄 **Modelado**: Implementación de modelos de ML
+5. 🔄 **Evaluación**: Validación y métricas de rendimiento
+6. 🔄 **Despliegue**: Reportes y visualizaciones finales
+
+## 🧪 Testing
+
+Ejecutar tests:
+```bash
+kedro test
+```
+
+## 📊 Reportes Generados
+
+- **Reporte de Calidad de Datos**: Análisis de valores faltantes y duplicados
+- **Reporte de EDA**: Análisis exploratorio completo
+- **Reporte de Modelos**: Resultados de ML y métricas
+
+## 🤝 Contribución
+
+1. Fork el proyecto
+2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
+3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
+4. Push a la rama (`git push origin feature/AmazingFeature`)
+5. Abre un Pull Request
+
+## 📄 Licencia
+
+Este proyecto está bajo la Licencia MIT. Ver `LICENSE` para más detalles.
+
+## 👥 Autores
+
+- **Tu Nombre** - *Trabajo inicial* - [TuGitHub](https://github.com/tuusername)
+
+## 🙏 Agradecimientos
+
+- Riot Games por los datos de League of Legends
+- La comunidad de Kedro por el framework
+- La comunidad de Python por las librerías utilizadas
+
+---
+
+**¡Que ganes el juego! 🎮**
