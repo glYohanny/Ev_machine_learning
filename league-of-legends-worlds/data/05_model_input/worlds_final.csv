@@ -1,0 +1,4 @@
+dataset,total_records,total_features,data_quality_score,avg_win_rate,preparation_status
+champions,1293,29,93.6421580393098,45.68631090487239,Completado
+matches,1070,45,96.39252336448598,,Completado
+players,1121,27,94.29741963194238,46.15521855486173,Completado
