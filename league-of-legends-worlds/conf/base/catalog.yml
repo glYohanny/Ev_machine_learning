@@ -1,6 +1,6 @@
-# Datos originales (raw)
+# Datos originales (raw) - Sintaxis correcta kedro-datasets 8.x
 champions_raw:
-  type: pandas.CSVDataSet
+  type: pandas.CSVDataset
   filepath: data/01_raw/champions_stats.csv
   load_args:
     encoding: latin-1
@@ -9,7 +9,7 @@ champions_raw:
     index: false
 
 matches_raw:
-  type: pandas.CSVDataSet
+  type: pandas.CSVDataset
   filepath: data/01_raw/matchs_stats.csv
   load_args:
     encoding: latin-1
@@ -18,7 +18,7 @@ matches_raw:
     index: false
 
 players_raw:
-  type: pandas.CSVDataSet
+  type: pandas.CSVDataset
   filepath: data/01_raw/players_stats.csv
   load_args:
     encoding: latin-1
@@ -28,7 +28,7 @@ players_raw:
 
 # Datos intermedios (cleaned)
 champions_clean:
-  type: pandas.CSVDataSet
+  type: pandas.CSVDataset
   filepath: data/02_intermediate/champions_clean.csv
   load_args:
     encoding: latin-1
@@ -37,7 +37,7 @@ champions_clean:
     index: false
 
 matches_clean:
-  type: pandas.CSVDataSet
+  type: pandas.CSVDataset
   filepath: data/02_intermediate/matches_clean.csv
   load_args:
     encoding: latin-1
@@ -46,7 +46,7 @@ matches_clean:
     index: false
 
 players_clean:
-  type: pandas.CSVDataSet
+  type: pandas.CSVDataset
   filepath: data/02_intermediate/players_clean.csv
   load_args:
     encoding: latin-1
@@ -56,7 +56,7 @@ players_clean:
 
 # Datos primarios (consolidated)
 worlds_consolidated:
-  type: pandas.CSVDataSet
+  type: pandas.CSVDataset
   filepath: data/03_primary/worlds_consolidated.csv
   load_args:
     encoding: latin-1
@@ -66,7 +66,7 @@ worlds_consolidated:
 
 # Features engineering
 champions_features:
-  type: pandas.CSVDataSet
+  type: pandas.CSVDataset
   filepath: data/04_feature/champions_features.csv
   load_args:
     encoding: latin-1
@@ -75,7 +75,7 @@ champions_features:
     index: false
 
 matches_features:
-  type: pandas.CSVDataSet
+  type: pandas.CSVDataset
   filepath: data/04_feature/matches_features.csv
   load_args:
     encoding: latin-1
@@ -84,7 +84,7 @@ matches_features:
     index: false
 
 players_features:
-  type: pandas.CSVDataSet
+  type: pandas.CSVDataset
   filepath: data/04_feature/players_features.csv
   load_args:
     encoding: latin-1
@@ -94,7 +94,7 @@ players_features:
 
 # Model input
 worlds_final:
-  type: pandas.CSVDataSet
+  type: pandas.CSVDataset
   filepath: data/05_model_input/worlds_final.csv
   load_args:
     encoding: latin-1
@@ -104,16 +104,26 @@ worlds_final:
 
 # Reportes
 data_quality_report:
-  type: text.TextDataSet
-  filepath: data/08_reporting/data_quality_report.txt
+  type: pandas.CSVDataset
+  filepath: data/08_reporting/data_quality_report.csv
+  load_args:
+    encoding: utf-8
+  save_args:
+    encoding: utf-8
+    index: false
 
 eda_report:
-  type: text.TextDataSet
-  filepath: data/08_reporting/eda_report.txt
+  type: pandas.CSVDataset
+  filepath: data/08_reporting/eda_report.csv
+  load_args:
+    encoding: utf-8
+  save_args:
+    encoding: utf-8
+    index: false
 
 # Datos en múltiples formatos (requisito de la rúbrica)
 champions_json:
-  type: pandas.JSONDataSet
+  type: pandas.JSONDataset
   filepath: data/01_raw/champions_stats.json
   load_args:
     orient: records
@@ -122,7 +132,7 @@ champions_json:
     index: false
 
 matches_json:
-  type: pandas.JSONDataSet
+  type: pandas.JSONDataset
   filepath: data/01_raw/matchs_stats.json
   load_args:
     orient: records
@@ -131,7 +141,7 @@ matches_json:
     index: false
 
 players_json:
-  type: pandas.JSONDataSet
+  type: pandas.JSONDataset
   filepath: data/01_raw/players_stats.json
   load_args:
     orient: records
@@ -140,7 +150,7 @@ players_json:
     index: false
 
 champions_txt:
-  type: pandas.CSVDataSet
+  type: pandas.CSVDataset
   filepath: data/01_raw/champions_stats.txt
   load_args:
     sep: '\t'
@@ -151,7 +161,7 @@ champions_txt:
     index: false
 
 matches_txt:
-  type: pandas.CSVDataSet
+  type: pandas.CSVDataset
   filepath: data/01_raw/matchs_stats.txt
   load_args:
     sep: '\t'
@@ -162,7 +172,7 @@ matches_txt:
     index: false
 
 players_txt:
-  type: pandas.CSVDataSet
+  type: pandas.CSVDataset
   filepath: data/01_raw/players_stats.txt
   load_args:
     sep: '\t'

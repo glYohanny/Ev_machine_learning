@@ -1,6 +1,7 @@
 # 🏆 League of Legends Worlds - Análisis de Datos con Kedro
 
 ## 📋 Descripción del Proyecto
+## Video descripcion ( https://www.youtube.com/watch?v=eifkzXKjqcU )
 
 Este proyecto implementa un análisis completo de datos de League of Legends Worlds Championship siguiendo la metodología **CRISP-DM** y utilizando **Kedro** como framework de pipeline de datos.
 
@@ -176,7 +177,7 @@ Este proyecto está bajo la Licencia MIT. Ver `LICENSE` para más detalles.
 
 ## 👥 Autores
 
-- **Tu Nombre** - *Trabajo inicial* - [TuGitHub](https://github.com/tuusername)
+- **Jossue Padron and Pedro Torres** - *Trabajo inicial* - [glYohanny](https://github.com/glYohanny)
 
 ## 🙏 Agradecimientos
 

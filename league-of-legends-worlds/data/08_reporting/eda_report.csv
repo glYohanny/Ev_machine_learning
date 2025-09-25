@@ -1,0 +1,13 @@
+Dataset,Variable,Media,Mediana,Desv_Estandar,Minimo,Maximo,Tipo_Analisis
+Champions,season,7.97,9.0,3.15,1.0,12.0,Univariado
+Champions,games_contests,14.86,7.0,17.61,1.0,82.0,Univariado
+Champions,pick_ban_ratio,24.98,13.8,26.61,1.2,100.0,Univariado
+Champions,banned_games,9.62,5.0,11.88,1.0,80.0,Univariado
+Champions,played_games,7.96,4.0,9.23,0.0,58.0,Univariado
+Matches,season,7.74,8.0,3.06,1.0,12.0,Univariado
+Matches,patch,8.62,9.19,2.49,4.14,12.18,Univariado
+Players,season,7.6,8.0,3.12,1.0,12.0,Univariado
+Players,games_played,8.34,7.0,4.13,1.0,21.0,Univariado
+Players,wins,4.17,3.0,3.57,0.0,15.0,Univariado
+Players,loses,4.17,4.0,1.74,0.0,8.0,Univariado
+Players,win_rate,43.98,44.4,25.03,0.0,100.0,Univariado

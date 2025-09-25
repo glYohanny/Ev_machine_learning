@@ -1,4 +1,4 @@
-dataset,total_records,total_columns,missing_values,data_quality_score
-champions_stats,1345,24,3293,-144.83
-matchs_stats,1070,37,1531,-43.08
-players_stats,1283,21,2264,-76.46
+dataset,total_records,total_features,data_quality_score,avg_win_rate,preparation_status
+champions,542,29,95.0,32.50885608856088,Completado
+matches,1070,53,96.0,0.0,Completado
+players,1281,25,94.0,0.0,Completado

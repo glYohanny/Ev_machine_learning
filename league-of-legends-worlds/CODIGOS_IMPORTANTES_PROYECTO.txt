@@ -1,0 +1,871 @@
+================================================================================
+                    CÓDIGOS IMPORTANTES DEL PROYECTO
+                    LEAGUE OF LEGENDS WORLDS ANALYSIS
+================================================================================
+
+🎯 RESUMEN: Este documento contiene los códigos más importantes utilizados
+en el proyecto, organizados por funcionalidad y con explicaciones detalladas.
+
+================================================================================
+📊 IMPORTS Y CONFIGURACIÓN INICIAL
+================================================================================
+
+# Librerías principales para análisis de datos
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+from sklearn.cluster import KMeans
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, classification_report
+import warnings
+warnings.filterwarnings('ignore')
+
+# Configuración de visualización
+plt.style.use('seaborn-v0_8')
+sns.set_palette("husl")
+plt.rcParams['figure.figsize'] = (12, 8)
+plt.rcParams['font.size'] = 12
+
+================================================================================
+🔧 CARGA DE DATOS CON ENCODING AUTOMÁTICO
+================================================================================
+
+def load_data_with_encoding(file_path):
+    """
+    Carga datos CSV con manejo automático de encoding
+    """
+    encodings = ['utf-8', 'latin-1', 'cp1252']
+    
+    for encoding in encodings:
+        try:
+            df = pd.read_csv(file_path, encoding=encoding)
+            print(f"✅ Datos cargados exitosamente con encoding: {encoding}")
+            return df
+        except UnicodeDecodeError:
+            continue
+    
+    print("❌ No se pudo cargar el archivo con ningún encoding")
+    return None
+
+# Uso práctico
+champions = load_data_with_encoding('data/04_feature/champions_features.csv')
+players = load_data_with_encoding('data/04_feature/players_features.csv')
+matches = load_data_with_encoding('data/04_feature/matches_features.csv')
+
+================================================================================
+📈 FEATURE ENGINEERING - CÁLCULO DE MÉTRICAS DERIVADAS
+================================================================================
+
+# 1. CÁLCULO DE KDA (Kill-Death-Assist Ratio)
+def calculate_kda(kills, deaths, assists):
+    """
+    Calcula KDA evitando división por cero
+    """
+    if deaths == 0:
+        return kills + assists
+    else:
+        return (kills + assists) / deaths
+
+# Aplicación a DataFrame
+df['kda'] = df.apply(lambda row: calculate_kda(row['kills'], row['deaths'], row['assists']), axis=1)
+
+# 2. CÁLCULO DE EFFICIENCY SCORE
+def calculate_efficiency_score(row):
+    """
+    Calcula el Efficiency Score combinando múltiples métricas
+    """
+    kda_weight = 0.3
+    cs_weight = 0.2
+    gold_weight = 0.2
+    damage_weight = 0.2
+    participation_weight = 0.1
+    
+    efficiency = (row['kda'] * kda_weight + 
+                 row['cs/min'] * cs_weight + 
+                 row['gold/min'] * gold_weight + 
+                 row['damage/min'] * damage_weight + 
+                 row['kill_participation'] * participation_weight)
+    
+    return efficiency
+
+# Aplicación a DataFrame
+df['efficiency_score'] = df.apply(calculate_efficiency_score, axis=1)
+
+# 3. CÁLCULO DE KILL PARTICIPATION
+def calculate_kill_participation(kills, assists, team_kills):
+    """
+    Calcula la participación en kills del equipo
+    """
+    if team_kills == 0:
+        return 0
+    return (kills + assists) / team_kills * 100
+
+# Aplicación a DataFrame
+df['kill_participation'] = df.apply(lambda row: 
+    calculate_kill_participation(row['kills'], row['assists'], row['team_kills']), axis=1)
+
+# 4. CÁLCULO DE GOLD SHARE
+def calculate_gold_share(player_gold, team_gold):
+    """
+    Calcula el porcentaje de oro del equipo que obtiene el jugador
+    """
+    if team_gold == 0:
+        return 0
+    return (player_gold / team_gold) * 100
+
+# Aplicación a DataFrame
+df['gold_share'] = df.apply(lambda row: 
+    calculate_gold_share(row['gold'], row['team_gold']), axis=1)
+
+================================================================================
+🔍 ANÁLISIS DE CALIDAD DE DATOS
+================================================================================
+
+# 1. ANÁLISIS DE MISSING VALUES
+def analyze_missing_values(df):
+    """
+    Analiza y reporta valores faltantes
+    """
+    missing_data = df.isnull().sum()
+    missing_percent = (missing_data / len(df)) * 100
+    
+    missing_df = pd.DataFrame({
+        'Column': missing_data.index,
+        'Missing_Count': missing_data.values,
+        'Missing_Percent': missing_percent.values
+    })
+    
+    missing_df = missing_df[missing_df['Missing_Count'] > 0].sort_values('Missing_Percent', ascending=False)
+    
+    return missing_df
+
+# Uso
+missing_analysis = analyze_missing_values(champions)
+print("📊 Análisis de valores faltantes:")
+print(missing_analysis)
+
+# 2. DETECCIÓN DE OUTLIERS CON IQR
+def detect_outliers_iqr(df, column):
+    """
+    Detecta outliers usando el método IQR
+    """
+    Q1 = df[column].quantile(0.25)
+    Q3 = df[column].quantile(0.75)
+    IQR = Q3 - Q1
+    
+    lower_bound = Q1 - 1.5 * IQR
+    upper_bound = Q3 + 1.5 * IQR
+    
+    outliers = df[(df[column] < lower_bound) | (df[column] > upper_bound)]
+    
+    return outliers, lower_bound, upper_bound
+
+# Uso
+outliers, lower, upper = detect_outliers_iqr(champions, 'efficiency_score')
+print(f"🔍 Outliers en efficiency_score: {len(outliers)}")
+
+# 3. IMPUTACIÓN DE VALORES FALTANTES
+def impute_missing_values(df):
+    """
+    Imputa valores faltantes usando estrategias apropiadas
+    """
+    df_imputed = df.copy()
+    
+    # Para variables numéricas: usar mediana
+    numeric_cols = df_imputed.select_dtypes(include=[np.number]).columns
+    for col in numeric_cols:
+        if df_imputed[col].isnull().any():
+            df_imputed[col].fillna(df_imputed[col].median(), inplace=True)
+    
+    # Para variables categóricas: usar moda
+    categorical_cols = df_imputed.select_dtypes(include=['object']).columns
+    for col in categorical_cols:
+        if df_imputed[col].isnull().any():
+            mode_value = df_imputed[col].mode()[0]
+            df_imputed[col].fillna(mode_value, inplace=True)
+    
+    return df_imputed
+
+# Uso
+champions_clean = impute_missing_values(champions)
+
+================================================================================
+📊 ANÁLISIS EXPLORATORIO DE DATOS (EDA)
+================================================================================
+
+# 1. ANÁLISIS DE DISTRIBUCIONES
+def plot_distributions(df, columns, figsize=(16, 12)):
+    """
+    Crea gráficos de distribución para múltiples columnas
+    """
+    n_cols = len(columns)
+    n_rows = (n_cols + 1) // 2
+    
+    fig, axes = plt.subplots(n_rows, 2, figsize=figsize)
+    axes = axes.flatten()
+    
+    for i, col in enumerate(columns):
+        if col in df.columns:
+            axes[i].hist(df[col], bins=30, alpha=0.7, edgecolor='black')
+            axes[i].set_title(f'Distribución de {col}')
+            axes[i].set_xlabel(col)
+            axes[i].set_ylabel('Frecuencia')
+            axes[i].grid(True, alpha=0.3)
+    
+    # Ocultar ejes vacíos
+    for i in range(n_cols, len(axes)):
+        axes[i].set_visible(False)
+    
+    plt.tight_layout()
+    plt.show()
+
+# Uso
+numeric_cols = ['efficiency_score', 'kda', 'cs/min', 'gold/min']
+plot_distributions(champions, numeric_cols)
+
+# 2. MATRIZ DE CORRELACIÓN MEJORADA
+def plot_correlation_matrix(df, columns=None, figsize=(12, 10)):
+    """
+    Crea matriz de correlación con mejoras visuales
+    """
+    if columns is None:
+        numeric_cols = df.select_dtypes(include=[np.number]).columns
+        columns = numeric_cols[:8]  # Limitar a 8 columnas para claridad
+    
+    corr_matrix = df[columns].corr()
+    
+    # Crear máscara para valores significativos
+    mask = np.triu(np.ones_like(corr_matrix, dtype=bool))
+    
+    plt.figure(figsize=figsize)
+    sns.heatmap(corr_matrix, mask=mask, annot=True, fmt='.2f', 
+                cmap='RdBu_r', center=0, square=True, 
+                cbar_kws={"shrink": .8})
+    
+    plt.title('Matriz de Correlación', fontsize=16, fontweight='bold')
+    plt.tight_layout()
+    plt.show()
+    
+    return corr_matrix
+
+# Uso
+corr_matrix = plot_correlation_matrix(champions)
+
+# 3. ANÁLISIS DE CORRELACIONES CON RESULTADO
+def analyze_correlations_with_target(df, target_col, top_n=10):
+    """
+    Analiza correlaciones con variable objetivo
+    """
+    numeric_cols = df.select_dtypes(include=[np.number]).columns
+    numeric_cols = [col for col in numeric_cols if col != target_col]
+    
+    correlations = []
+    for col in numeric_cols:
+        corr = df[col].corr(df[target_col])
+        if not pd.isna(corr):
+            correlations.append((col, abs(corr), corr))
+    
+    correlations.sort(key=lambda x: x[1], reverse=True)
+    
+    print(f"🔗 TOP {top_n} CORRELACIONES CON {target_col}:")
+    for i, (col, abs_corr, corr) in enumerate(correlations[:top_n], 1):
+        direction = "📈 Positiva" if corr > 0 else "📉 Negativa"
+        strength = "🔴 Fuerte" if abs_corr > 0.5 else "🟡 Moderada" if abs_corr > 0.3 else "🟢 Débil"
+        print(f"   {i:2d}. {col}: {corr:.3f} {direction} {strength}")
+    
+    return correlations
+
+# Uso
+correlations = analyze_correlations_with_target(matches, 'result_numeric')
+
+================================================================================
+🎯 ANÁLISIS DE CLUSTERING COMPLETO
+================================================================================
+
+# 1. PREPARACIÓN DE DATOS PARA CLUSTERING
+def prepare_clustering_data(df, n_features=5):
+    """
+    Prepara datos para clustering con selección automática de features
+    """
+    numeric_cols = df.select_dtypes(include=[np.number]).columns
+    
+    if len(numeric_cols) < 2:
+        print("❌ No hay suficientes columnas numéricas para clustering")
+        return None, None, None
+    
+    # Seleccionar las primeras n_features columnas numéricas
+    features = numeric_cols[:n_features].tolist()
+    
+    # Preparar datos
+    X = df[features].fillna(df[features].mean())
+    
+    # Estandarizar
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+    
+    return X_scaled, features, scaler
+
+# 2. ANÁLISIS PCA
+def perform_pca_analysis(X_scaled, n_components=3):
+    """
+    Realiza análisis PCA
+    """
+    pca = PCA(n_components=n_components)
+    X_pca = pca.fit_transform(X_scaled)
+    
+    print(f"📊 PCA Analysis:")
+    for i, ratio in enumerate(pca.explained_variance_ratio_):
+        print(f"   PC{i+1}: {ratio:.1%} de varianza explicada")
+    
+    return pca, X_pca
+
+# 3. CLUSTERING K-MEANS
+def perform_kmeans_clustering(X_scaled, n_clusters=4):
+    """
+    Realiza clustering K-Means
+    """
+    kmeans = KMeans(n_clusters=n_clusters, random_state=42)
+    clusters = kmeans.fit_predict(X_scaled)
+    
+    return kmeans, clusters
+
+# 4. VISUALIZACIÓN COMPLETA DE CLUSTERING
+def plot_clustering_analysis(X_scaled, X_pca, clusters, features, pca, figsize=(16, 12)):
+    """
+    Crea 4 gráficos de clustering
+    """
+    fig, axes = plt.subplots(2, 2, figsize=figsize)
+    
+    # Gráfico 1: PCA 2D
+    scatter1 = axes[0,0].scatter(X_pca[:, 0], X_pca[:, 1], c=clusters, cmap='viridis', alpha=0.7)
+    axes[0,0].set_title('PCA 2D - Clustering', fontsize=14, fontweight='bold')
+    axes[0,0].set_xlabel(f'PC1 ({pca.explained_variance_ratio_[0]:.1%} varianza)')
+    axes[0,0].set_ylabel(f'PC2 ({pca.explained_variance_ratio_[1]:.1%} varianza)')
+    axes[0,0].grid(True, alpha=0.3)
+    plt.colorbar(scatter1, ax=axes[0,0])
+    
+    # Gráfico 2: PCA 3D Proyección
+    scatter2 = axes[0,1].scatter(X_pca[:, 0], X_pca[:, 2], c=clusters, cmap='plasma', alpha=0.7)
+    axes[0,1].set_title('PCA 3D Proyección - PC1 vs PC3', fontsize=14, fontweight='bold')
+    axes[0,1].set_xlabel(f'PC1 ({pca.explained_variance_ratio_[0]:.1%} varianza)')
+    axes[0,1].set_ylabel(f'PC3 ({pca.explained_variance_ratio_[2]:.1%} varianza)')
+    axes[0,1].grid(True, alpha=0.3)
+    plt.colorbar(scatter2, ax=axes[0,1])
+    
+    # Gráfico 3: Variables Originales
+    if len(features) >= 2:
+        scatter3 = axes[1,0].scatter(X_scaled[:, 0], X_scaled[:, 1], c=clusters, cmap='coolwarm', alpha=0.7)
+        axes[1,0].set_title(f'Clustering: {features[0]} vs {features[1]}', fontsize=14, fontweight='bold')
+        axes[1,0].set_xlabel(features[0])
+        axes[1,0].set_ylabel(features[1])
+        axes[1,0].grid(True, alpha=0.3)
+        plt.colorbar(scatter3, ax=axes[1,0])
+    
+    # Gráfico 4: Distribución de Clusters
+    cluster_counts = np.bincount(clusters)
+    colors = ['red', 'blue', 'green', 'orange']
+    bars = axes[1,1].bar(range(len(cluster_counts)), cluster_counts, 
+                        color=colors[:len(cluster_counts)], alpha=0.7)
+    axes[1,1].set_title('Distribución de Clusters', fontsize=14, fontweight='bold')
+    axes[1,1].set_xlabel('Cluster')
+    axes[1,1].set_ylabel('Número de Elementos')
+    axes[1,1].set_xticks(range(len(cluster_counts)))
+    axes[1,1].set_xticklabels([f'Cluster {i}' for i in range(len(cluster_counts))])
+    axes[1,1].grid(True, alpha=0.3)
+    
+    # Agregar valores en las barras
+    for i, bar in enumerate(bars):
+        height = bar.get_height()
+        axes[1,1].text(bar.get_x() + bar.get_width()/2., height + 0.1,
+                      f'{int(height)}', ha='center', va='bottom', fontweight='bold')
+    
+    plt.tight_layout()
+    plt.show()
+
+# 5. ANÁLISIS COMPLETO DE CLUSTERING
+def complete_clustering_analysis(df, n_clusters=4):
+    """
+    Realiza análisis completo de clustering
+    """
+    # Preparar datos
+    X_scaled, features, scaler = prepare_clustering_data(df)
+    if X_scaled is None:
+        return
+    
+    # PCA
+    pca, X_pca = perform_pca_analysis(X_scaled)
+    
+    # K-Means
+    kmeans, clusters = perform_kmeans_clustering(X_scaled, n_clusters)
+    
+    # Visualización
+    plot_clustering_analysis(X_scaled, X_pca, clusters, features, pca)
+    
+    # Análisis de clusters
+    cluster_counts = np.bincount(clusters)
+    colors = ['red', 'blue', 'green', 'orange']
+    
+    print(f"\n🎯 ANÁLISIS DE CLUSTERS:")
+    for i in range(len(cluster_counts)):
+        cluster_data = df[clusters == i]
+        print(f"\n📊 CLUSTER {i+1} ({len(cluster_data)} elementos):")
+        print(f"   • Color: {colors[i]}")
+        print(f"   • Porcentaje: {len(cluster_data)/len(df)*100:.1f}%")
+        
+        for feature in features[:3]:
+            if feature in cluster_data.columns:
+                mean_val = cluster_data[feature].mean()
+                std_val = cluster_data[feature].std()
+                print(f"   • {feature}: {mean_val:.2f} ± {std_val:.2f}")
+    
+    return kmeans, clusters, pca, X_pca
+
+# Uso
+kmeans, clusters, pca, X_pca = complete_clustering_analysis(champions)
+
+================================================================================
+📊 ANÁLISIS TEMPORAL Y RANKINGS
+================================================================================
+
+# 1. ANÁLISIS TEMPORAL POR TEMPORADAS
+def analyze_temporal_trends(df, time_col, metric_col, top_n=10):
+    """
+    Analiza tendencias temporales de una métrica
+    """
+    if time_col not in df.columns or metric_col not in df.columns:
+        print(f"❌ Columnas {time_col} o {metric_col} no encontradas")
+        return
+    
+    # Agrupar por temporada y calcular promedio
+    temporal_data = df.groupby(time_col)[metric_col].mean().sort_values(ascending=False)
+    
+    # Crear gráfico
+    plt.figure(figsize=(12, 6))
+    temporal_data.plot(kind='bar', color='skyblue', alpha=0.7)
+    plt.title(f'Evolución de {metric_col} por {time_col}', fontsize=14, fontweight='bold')
+    plt.xlabel(time_col)
+    plt.ylabel(metric_col)
+    plt.xticks(rotation=45)
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.show()
+    
+    return temporal_data
+
+# Uso
+temporal_trends = analyze_temporal_trends(champions, 'season', 'efficiency_score')
+
+# 2. TOP RANKINGS DE JUGADORES
+def create_top_rankings(df, player_col, metric_col, top_n=15, min_games=3):
+    """
+    Crea rankings de jugadores por métrica específica
+    """
+    if player_col not in df.columns or metric_col not in df.columns:
+        print(f"❌ Columnas {player_col} o {metric_col} no encontradas")
+        return
+    
+    # Agrupar por jugador y calcular estadísticas
+    player_stats = df.groupby(player_col).agg({
+        metric_col: 'mean',
+        player_col: 'count'
+    }).rename(columns={player_col: 'games_played'})
+    
+    # Filtrar jugadores con mínimo de partidas
+    reliable_players = player_stats[player_stats['games_played'] >= min_games]
+    
+    if len(reliable_players) == 0:
+        print(f"❌ No hay jugadores con al menos {min_games} partidas")
+        return
+    
+    # Obtener top jugadores
+    top_players = reliable_players.nlargest(top_n, metric_col)
+    
+    # Crear gráfico
+    plt.figure(figsize=(12, 8))
+    bars = plt.barh(range(len(top_players)), top_players[metric_col].values, 
+                    color='lightblue', alpha=0.7)
+    plt.yticks(range(len(top_players)), top_players.index)
+    plt.title(f'Top {top_n} Jugadores con Mejor {metric_col}', fontsize=14, fontweight='bold')
+    plt.xlabel(f'{metric_col} Promedio')
+    plt.grid(True, alpha=0.3)
+    
+    # Agregar valores en las barras
+    for i, bar in enumerate(bars):
+        width = bar.get_width()
+        plt.text(width + 0.01, bar.get_y() + bar.get_height()/2, 
+                f'{width:.2f}', ha='left', va='center', fontweight='bold')
+    
+    plt.tight_layout()
+    plt.show()
+    
+    # Mostrar estadísticas
+    print(f"\n🏆 TOP {top_n} JUGADORES CON MEJOR {metric_col}:")
+    for i, (player, row) in enumerate(top_players.iterrows(), 1):
+        print(f"   {i:2d}. {player}: {row[metric_col]:.2f} ({row['games_played']} partidas)")
+    
+    return top_players
+
+# Uso
+top_cs_players = create_top_rankings(players, 'player', 'cs/min', top_n=15, min_games=3)
+
+# 3. ANÁLISIS DE CAMPEONES MÁS JUGADOS
+def analyze_champion_popularity(df, champion_col, top_n=15):
+    """
+    Analiza popularidad de campeones
+    """
+    if champion_col not in df.columns:
+        print(f"❌ Columna {champion_col} no encontrada")
+        return
+    
+    # Contar frecuencia de campeones
+    champion_counts = df[champion_col].value_counts().head(top_n)
+    
+    # Crear gráfico
+    plt.figure(figsize=(12, 8))
+    bars = plt.barh(range(len(champion_counts)), champion_counts.values, 
+                    color='lightcoral', alpha=0.7)
+    plt.yticks(range(len(champion_counts)), champion_counts.index)
+    plt.title(f'Top {top_n} Campeones Más Jugados', fontsize=14, fontweight='bold')
+    plt.xlabel('Número de Partidas')
+    plt.grid(True, alpha=0.3)
+    
+    # Agregar valores en las barras
+    for i, bar in enumerate(bars):
+        width = bar.get_width()
+        plt.text(width + 0.1, bar.get_y() + bar.get_height()/2, 
+                f'{int(width)}', ha='left', va='center', fontweight='bold')
+    
+    plt.tight_layout()
+    plt.show()
+    
+    # Mostrar estadísticas
+    print(f"\n🏆 TOP {top_n} CAMPEONES MÁS JUGADOS:")
+    for i, (champion, count) in enumerate(champion_counts.items(), 1):
+        print(f"   {i:2d}. {champion}: {count} partidas")
+    
+    return champion_counts
+
+# Uso
+popular_champions = analyze_champion_popularity(champions, 'champion')
+
+================================================================================
+🎯 PREPARACIÓN PARA MACHINE LEARNING
+================================================================================
+
+# 1. PREPARACIÓN DE DATOS PARA ML
+def prepare_ml_data(champions_df, players_df, matches_df):
+    """
+    Prepara datos consolidados para machine learning
+    """
+    # Crear features de equipo
+    team_features = players_df.groupby(['team', 'season']).agg({
+        'efficiency_score': 'mean',
+        'kda': 'mean',
+        'cs/min': 'mean',
+        'gold/min': 'mean',
+        'damage/min': 'mean',
+        'kill_participation': 'mean'
+    }).reset_index()
+    
+    # Renombrar columnas
+    team_features.columns = ['team', 'season', 'team_efficiency', 'team_kda', 
+                           'team_cs_min', 'team_gold_min', 'team_damage_min', 
+                           'team_kill_participation']
+    
+    # Consolidar datos de partidas
+    ml_data = matches_df.merge(team_features, left_on=['team1', 'season'], 
+                              right_on=['team', 'season'], how='left')
+    ml_data = ml_data.merge(team_features, left_on=['team2', 'season'], 
+                           right_on=['team', 'season'], how='left', 
+                           suffixes=('_team1', '_team2'))
+    
+    # Crear features derivadas
+    ml_data['efficiency_diff'] = ml_data['team_efficiency_team1'] - ml_data['team_efficiency_team2']
+    ml_data['kda_diff'] = ml_data['team_kda_team1'] - ml_data['team_kda_team2']
+    ml_data['cs_diff'] = ml_data['team_cs_min_team1'] - ml_data['team_cs_min_team2']
+    
+    # Seleccionar columnas relevantes
+    feature_cols = ['efficiency_diff', 'kda_diff', 'cs_diff', 'duration', 'season']
+    target_col = 'result_numeric'
+    
+    # Eliminar filas con valores faltantes
+    ml_data_clean = ml_data[feature_cols + [target_col]].dropna()
+    
+    return ml_data_clean, feature_cols, target_col
+
+# 2. ENTRENAMIENTO DE MODELO
+def train_ml_model(X, y, test_size=0.2, random_state=42):
+    """
+    Entrena modelo de machine learning
+    """
+    # Dividir datos
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=test_size, random_state=random_state, stratify=y
+    )
+    
+    # Entrenar Random Forest
+    rf_model = RandomForestClassifier(n_estimators=100, random_state=random_state)
+    rf_model.fit(X_train, y_train)
+    
+    # Predicciones
+    y_pred = rf_model.predict(X_test)
+    
+    # Evaluación
+    accuracy = accuracy_score(y_test, y_pred)
+    report = classification_report(y_test, y_pred)
+    
+    print(f"📊 Accuracy del modelo: {accuracy:.3f}")
+    print(f"\n📈 Reporte de clasificación:")
+    print(report)
+    
+    # Importancia de features
+    feature_importance = pd.DataFrame({
+        'feature': X.columns,
+        'importance': rf_model.feature_importances_
+    }).sort_values('importance', ascending=False)
+    
+    print(f"\n🎯 Importancia de Features:")
+    for i, row in feature_importance.iterrows():
+        print(f"   {row['feature']}: {row['importance']:.3f}")
+    
+    return rf_model, feature_importance
+
+# 3. ANÁLISIS COMPLETO DE ML
+def complete_ml_analysis(champions_df, players_df, matches_df):
+    """
+    Realiza análisis completo de machine learning
+    """
+    # Preparar datos
+    ml_data, feature_cols, target_col = prepare_ml_data(champions_df, players_df, matches_df)
+    
+    if len(ml_data) == 0:
+        print("❌ No hay datos suficientes para ML")
+        return
+    
+    # Separar features y target
+    X = ml_data[feature_cols]
+    y = ml_data[target_col]
+    
+    print(f"📊 Datos para ML: {len(ml_data)} partidas")
+    print(f"🎯 Features: {feature_cols}")
+    print(f"📈 Target: {target_col}")
+    
+    # Entrenar modelo
+    model, importance = train_ml_model(X, y)
+    
+    return model, importance, ml_data
+
+# Uso
+model, importance, ml_data = complete_ml_analysis(champions, players, matches)
+
+================================================================================
+📊 FUNCIONES DE UTILIDAD Y VALIDACIÓN
+================================================================================
+
+# 1. VALIDACIÓN DE CONSISTENCIA DE DATOS
+def validate_data_consistency(df, expected_columns):
+    """
+    Valida consistencia de datos
+    """
+    missing_cols = [col for col in expected_columns if col not in df.columns]
+    if missing_cols:
+        print(f"❌ Columnas faltantes: {missing_cols}")
+        return False
+    
+    print(f"✅ Todas las columnas esperadas están presentes")
+    return True
+
+# 2. RESUMEN ESTADÍSTICO
+def create_data_summary(df):
+    """
+    Crea resumen estadístico de los datos
+    """
+    summary = {
+        'total_rows': len(df),
+        'total_columns': len(df.columns),
+        'numeric_columns': len(df.select_dtypes(include=[np.number]).columns),
+        'categorical_columns': len(df.select_dtypes(include=['object']).columns),
+        'missing_values': df.isnull().sum().sum(),
+        'duplicate_rows': df.duplicated().sum()
+    }
+    
+    print("📊 RESUMEN DE DATOS:")
+    for key, value in summary.items():
+        print(f"   • {key}: {value}")
+    
+    return summary
+
+# 3. FUNCIÓN PARA MOSTRAR INFORMACIÓN DE DATASET
+def show_dataset_info(df, dataset_name):
+    """
+    Muestra información detallada de un dataset
+    """
+    print(f"\n📊 INFORMACIÓN DE {dataset_name.upper()}:")
+    print(f"   • Filas: {len(df)}")
+    print(f"   • Columnas: {len(df.columns)}")
+    print(f"   • Columnas numéricas: {len(df.select_dtypes(include=[np.number]).columns)}")
+    print(f"   • Columnas categóricas: {len(df.select_dtypes(include=['object']).columns)}")
+    print(f"   • Valores faltantes: {df.isnull().sum().sum()}")
+    print(f"   • Duplicados: {df.duplicated().sum()}")
+    
+    if len(df) > 0:
+        print(f"   • Primeras columnas: {list(df.columns[:5])}")
+        if len(df.columns) > 5:
+            print(f"   • ... y {len(df.columns) - 5} más")
+
+# Uso
+show_dataset_info(champions, "champions")
+show_dataset_info(players, "players")
+show_dataset_info(matches, "matches")
+
+================================================================================
+🎯 FUNCIONES DE VISUALIZACIÓN AVANZADA
+================================================================================
+
+# 1. GRÁFICO DE CORRELACIONES CON BARRAS
+def plot_correlation_bars(correlations, top_n=10, figsize=(12, 8)):
+    """
+    Crea gráfico de barras para correlaciones
+    """
+    top_correlations = correlations[:top_n]
+    cols = [item[0] for item in top_correlations]
+    corrs = [item[2] for item in top_correlations]
+    
+    colors = ['red' if c < 0 else 'blue' for c in corrs]
+    
+    plt.figure(figsize=figsize)
+    bars = plt.barh(range(len(cols)), corrs, color=colors, alpha=0.7)
+    plt.yticks(range(len(cols)), cols)
+    plt.title(f'Top {top_n} Correlaciones con Resultado', fontsize=14, fontweight='bold')
+    plt.xlabel('Correlación')
+    plt.axvline(x=0, color='black', linestyle='-', alpha=0.3)
+    plt.grid(True, alpha=0.3)
+    
+    # Agregar valores en las barras
+    for i, bar in enumerate(bars):
+        width = bar.get_width()
+        plt.text(width + 0.01 if width > 0 else width - 0.01, 
+                bar.get_y() + bar.get_height()/2, 
+                f'{width:.3f}', ha='left' if width > 0 else 'right', 
+                va='center', fontweight='bold')
+    
+    plt.tight_layout()
+    plt.show()
+
+# 2. GRÁFICO DE DISPERSIÓN CON REGRESIÓN
+def plot_scatter_with_regression(df, x_col, y_col, figsize=(10, 6)):
+    """
+    Crea gráfico de dispersión con línea de regresión
+    """
+    if x_col not in df.columns or y_col not in df.columns:
+        print(f"❌ Columnas {x_col} o {y_col} no encontradas")
+        return
+    
+    plt.figure(figsize=figsize)
+    sns.scatterplot(data=df, x=x_col, y=y_col, alpha=0.6)
+    sns.regplot(data=df, x=x_col, y=y_col, scatter=False, color='red')
+    
+    plt.title(f'{x_col} vs {y_col}', fontsize=14, fontweight='bold')
+    plt.xlabel(x_col)
+    plt.ylabel(y_col)
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.show()
+
+# 3. GRÁFICO DE BOX PLOT POR GRUPOS
+def plot_boxplot_by_groups(df, group_col, value_col, figsize=(12, 6)):
+    """
+    Crea box plot agrupado por una variable categórica
+    """
+    if group_col not in df.columns or value_col not in df.columns:
+        print(f"❌ Columnas {group_col} o {value_col} no encontradas")
+        return
+    
+    plt.figure(figsize=figsize)
+    sns.boxplot(data=df, x=group_col, y=value_col)
+    plt.title(f'{value_col} por {group_col}', fontsize=14, fontweight='bold')
+    plt.xlabel(group_col)
+    plt.ylabel(value_col)
+    plt.xticks(rotation=45)
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.show()
+
+================================================================================
+🏆 RESUMEN DE CÓDIGOS IMPORTANTES
+================================================================================
+
+CATEGORÍAS PRINCIPALES:
+
+1. 📊 IMPORTS Y CONFIGURACIÓN
+   - Librerías esenciales para análisis
+   - Configuración de visualización
+   - Manejo de warnings
+
+2. 🔧 CARGA DE DATOS
+   - Función de carga con encoding automático
+   - Manejo de errores de codificación
+   - Validación de archivos
+
+3. 📈 FEATURE ENGINEERING
+   - Cálculo de KDA con manejo de división por cero
+   - Efficiency Score combinado
+   - Kill Participation y Gold Share
+   - Aplicación a DataFrames
+
+4. 🔍 ANÁLISIS DE CALIDAD
+   - Detección de missing values
+   - Identificación de outliers con IQR
+   - Imputación de valores faltantes
+   - Validación de consistencia
+
+5. 📊 ANÁLISIS EXPLORATORIO
+   - Distribuciones de variables
+   - Matriz de correlación mejorada
+   - Análisis de correlaciones con target
+   - Visualizaciones avanzadas
+
+6. 🎯 CLUSTERING
+   - Preparación de datos para clustering
+   - Análisis PCA completo
+   - K-Means clustering
+   - Visualización de 4 gráficos
+   - Análisis de clusters
+
+7. 📊 ANÁLISIS TEMPORAL
+   - Tendencias por temporadas
+   - Rankings de jugadores
+   - Popularidad de campeones
+   - Análisis de evolución
+
+8. 🎯 MACHINE LEARNING
+   - Preparación de datos para ML
+   - Entrenamiento de modelos
+   - Evaluación de rendimiento
+   - Análisis de importancia de features
+
+9. 📊 UTILIDADES
+   - Validación de datos
+   - Resumen estadístico
+   - Información de datasets
+   - Funciones de visualización
+
+10. 🎯 FUNCIONES AVANZADAS
+    - Gráficos de correlaciones con barras
+    - Dispersión con regresión
+    - Box plots agrupados
+    - Visualizaciones personalizadas
+
+CARACTERÍSTICAS CLAVE:
+- Manejo robusto de errores
+- Código modular y reutilizable
+- Documentación clara
+- Visualizaciones profesionales
+- Análisis completo end-to-end
+- Preparación para producción
+
+================================================================================

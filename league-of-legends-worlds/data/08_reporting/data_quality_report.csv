@@ -1,0 +1,4 @@
+Dataset,Filas,Columnas,Valores_Faltantes,Porcentaje_Faltantes,Duplicados,Columnas_Numericas,Columnas_Texto
+Champions,1345,24,3293,244.8%,0,22,2
+Matches,1070,37,1531,143.1%,0,2,35
+Players,1283,21,2264,176.5%,0,18,3

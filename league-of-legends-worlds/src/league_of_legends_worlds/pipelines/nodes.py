@@ -12,12 +12,12 @@ import warnings
 warnings.filterwarnings('ignore')
 
 
-def load_raw_data() -> Dict[str, pd.DataFrame]:
+def load_raw_data() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
     Carga los datos originales desde los archivos CSV.
         
     Returns:
-        Dict[str, pd.DataFrame]: Diccionario con los tres datasets cargados
+        Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]: Tupla con los tres datasets cargados
     """
     print("🔄 Cargando datos originales...")
     
@@ -30,17 +30,13 @@ def load_raw_data() -> Dict[str, pd.DataFrame]:
     print(f"   - Matches: {matches_raw.shape}")
     print(f"   - Players: {players_raw.shape}")
     
-    return {
-        'champions_raw': champions_raw,
-        'matches_raw': matches_raw,
-        'players_raw': players_raw
-    }
+    return champions_raw, matches_raw, players_raw
 
 
 def analyze_data_quality(champions_raw: pd.DataFrame, 
                         matches_raw: pd.DataFrame, 
                         players_raw: pd.DataFrame,
-                        params: Dict[str, Any]) -> str:
+                        params: Dict[str, Any]) -> pd.DataFrame:
     """
     Analiza la calidad de los datos originales.
     
@@ -51,11 +47,9 @@ def analyze_data_quality(champions_raw: pd.DataFrame,
         params: Parámetros del proyecto
         
     Returns:
-        str: Reporte de calidad de datos
+        pd.DataFrame: Reporte de calidad de datos como DataFrame
     """
     print("🔍 Analizando calidad de datos...")
-    
-    report = "=== REPORTE DE CALIDAD DE DATOS ===\n\n"
     
     datasets = {
         'Champions': champions_raw,
@@ -63,32 +57,40 @@ def analyze_data_quality(champions_raw: pd.DataFrame,
         'Players': players_raw
     }
     
+    quality_data = []
+    
     for name, df in datasets.items():
-        report += f"📊 {name.upper()}:\n"
-        report += f"   Dimensiones: {df.shape}\n"
-        
         # Valores faltantes
         missing = df.isnull().sum()
         missing_pct = (missing / len(df)) * 100
         total_missing = missing.sum()
         
-        report += f"   Valores faltantes: {total_missing} ({missing_pct.sum():.1f}%)\n"
-        
         # Duplicados
         duplicates = df.duplicated().sum()
-        report += f"   Duplicados: {duplicates}\n"
         
         # Tipos de datos
         numeric_cols = df.select_dtypes(include=[np.number]).columns
         text_cols = df.select_dtypes(include=['object']).columns
-        report += f"   Columnas numéricas: {len(numeric_cols)}\n"
-        report += f"   Columnas de texto: {len(text_cols)}\n\n"
+        
+        quality_data.append({
+            'Dataset': name,
+            'Filas': df.shape[0],
+            'Columnas': df.shape[1],
+            'Valores_Faltantes': total_missing,
+            'Porcentaje_Faltantes': f"{missing_pct.sum():.1f}%",
+            'Duplicados': duplicates,
+            'Columnas_Numericas': len(numeric_cols),
+            'Columnas_Texto': len(text_cols)
+        })
     
-    return report
+    quality_df = pd.DataFrame(quality_data)
+    print(f"✅ Reporte de calidad generado: {quality_df.shape}")
+    
+    return quality_df
 
 
 def clean_champions_data(champions_raw: pd.DataFrame, 
-                        params: Dict[str, Any]) -> pd.DataFrame:
+                        data_cleaning_params: Dict[str, Any]) -> pd.DataFrame:
     """
     Limpia los datos de campeones.
     
@@ -122,7 +124,7 @@ def clean_champions_data(champions_raw: pd.DataFrame,
     # 4. Manejar valores faltantes
     for col in numeric_columns:
         if col in df.columns:
-            df[col] = df[col].fillna(params['data_cleaning']['fill_missing_with'])
+            df[col] = df[col].fillna(data_cleaning_params['fill_missing_with'])
     
     # 5. Filtrar datos inconsistentes
     invalid_stats = (df['kills'] < 0) | (df['deaths'] < 0) | (df['assists'] < 0)
@@ -140,7 +142,7 @@ def clean_champions_data(champions_raw: pd.DataFrame,
 
 
 def clean_matches_data(matches_raw: pd.DataFrame, 
-                      params: Dict[str, Any]) -> pd.DataFrame:
+                      data_cleaning_params: Dict[str, Any]) -> pd.DataFrame:
     """
     Limpia los datos de partidos.
     
@@ -166,23 +168,36 @@ def clean_matches_data(matches_raw: pd.DataFrame,
         df['date'] = pd.to_datetime(df['date'], errors='coerce')
         df = df.dropna(subset=['date'])
     
-    # 3. Convertir columnas numéricas
-    numeric_columns = ['duration', 'team1_kills', 'team2_kills', 'team1_gold', 'team2_gold']
+    # 3. Convertir columnas numéricas (adaptativo)
+    numeric_columns = []
+    for col in df.columns:
+        if df[col].dtype == 'object':
+            # Intentar convertir a numérico
+            try:
+                pd.to_numeric(df[col], errors='raise')
+                numeric_columns.append(col)
+            except:
+                pass
+    
     for col in numeric_columns:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors='coerce')
+        df[col] = pd.to_numeric(df[col], errors='coerce')
     
     # 4. Manejar valores faltantes
     for col in numeric_columns:
-        if col in df.columns:
-            df[col] = df[col].fillna(params['data_cleaning']['fill_missing_with'])
+        df[col] = df[col].fillna(data_cleaning_params['fill_missing_with'])
     
-    # 5. Validar consistencia
-    invalid_duration = df['duration'] <= 0
-    df = df[~invalid_duration]
+    # 5. Validar consistencia (solo si las columnas existen)
+    if 'duration' in df.columns:
+        invalid_duration = df['duration'] <= 0
+        df = df[~invalid_duration]
     
-    invalid_kills = (df['team1_kills'] < 0) | (df['team2_kills'] < 0)
-    df = df[~invalid_kills]
+    # Validar kills si existen columnas relacionadas
+    kill_columns = [col for col in df.columns if 'kill' in col.lower()]
+    if kill_columns:
+        for col in kill_columns:
+            if col in df.columns:
+                invalid_kills = df[col] < 0
+                df = df[~invalid_kills]
     
     final_shape = df.shape
     print(f"✅ Partidos limpios: {original_shape} → {final_shape}")
@@ -191,7 +206,7 @@ def clean_matches_data(matches_raw: pd.DataFrame,
 
 
 def clean_players_data(players_raw: pd.DataFrame, 
-                      params: Dict[str, Any]) -> pd.DataFrame:
+                      data_cleaning_params: Dict[str, Any]) -> pd.DataFrame:
     """
     Limpia los datos de jugadores.
     
@@ -207,9 +222,21 @@ def clean_players_data(players_raw: pd.DataFrame,
     df = players_raw.copy()
     original_shape = df.shape
     
-    # 1. Eliminar filas con valores faltantes críticos
-    critical_columns = ['player', 'team', 'champion', 'win']
-    df = df.dropna(subset=critical_columns)
+    # 1. Eliminar filas con valores faltantes críticos (adaptativo)
+    critical_columns = []
+    if 'player' in df.columns:
+        critical_columns.append('player')
+    if 'team' in df.columns:
+        critical_columns.append('team')
+    if 'champion' in df.columns:
+        critical_columns.append('champion')
+    if 'win' in df.columns:
+        critical_columns.append('win')
+    elif 'wins' in df.columns:
+        critical_columns.append('wins')
+    
+    if critical_columns:
+        df = df.dropna(subset=critical_columns)
     
     # 2. Limpiar columnas de texto
     text_columns = df.select_dtypes(include=['object']).columns
@@ -225,18 +252,25 @@ def clean_players_data(players_raw: pd.DataFrame,
     # 4. Manejar valores faltantes
     for col in numeric_columns:
         if col in df.columns:
-            df[col] = df[col].fillna(params['data_cleaning']['fill_missing_with'])
+            df[col] = df[col].fillna(data_cleaning_params['fill_missing_with'])
     
-    # 5. Filtrar datos inconsistentes
-    invalid_stats = (df['kills'] < 0) | (df['deaths'] < 0) | (df['assists'] < 0)
-    df = df[~invalid_stats]
+    # 5. Filtrar datos inconsistentes (adaptativo)
+    if 'kills' in df.columns and 'deaths' in df.columns and 'assists' in df.columns:
+        invalid_stats = (df['kills'] < 0) | (df['deaths'] < 0) | (df['assists'] < 0)
+        df = df[~invalid_stats]
     
-    invalid_wins = ~df['win'].isin([0, 1])
-    df = df[~invalid_wins]
+    # Validar wins si existe la columna
+    if 'win' in df.columns:
+        invalid_wins = ~df['win'].isin([0, 1])
+        df = df[~invalid_wins]
+    elif 'wins' in df.columns:
+        invalid_wins = df['wins'] < 0
+        df = df[~invalid_wins]
     
-    # 6. Filtrar nombres muy cortos
-    short_names = df['player'].str.len() < 2
-    df = df[~short_names]
+    # 6. Filtrar nombres muy cortos (si existe la columna player)
+    if 'player' in df.columns:
+        short_names = df['player'].str.len() < 2
+        df = df[~short_names]
     
     final_shape = df.shape
     print(f"✅ Jugadores limpios: {original_shape} → {final_shape}")
@@ -245,7 +279,7 @@ def clean_players_data(players_raw: pd.DataFrame,
 
 
 def create_champions_features(champions_clean: pd.DataFrame, 
-                             params: Dict[str, Any]) -> pd.DataFrame:
+                             feature_engineering_params: Dict[str, Any]) -> pd.DataFrame:
     """
     Crea características derivadas para campeones.
     
@@ -264,8 +298,8 @@ def create_champions_features(champions_clean: pd.DataFrame,
     df['kda_enhanced'] = (df['kills'] + df['assists']) / np.maximum(df['deaths'], 1)
     
     # 2. Calcular eficiencia
-    df['efficiency_score'] = (df['kda_enhanced'] * params['feature_engineering']['kda_weight'] + 
-                             df['win_rate'] * params['feature_engineering']['win_rate_weight'])
+    df['efficiency_score'] = (df['kda_enhanced'] * feature_engineering_params['kda_weight'] + 
+                             df['win_rate'] * feature_engineering_params['win_rate_weight'])
     
     # 3. Categorizar por rol (simplificado)
     df['role'] = 'other'  # Placeholder para clasificación de roles
@@ -284,7 +318,7 @@ def create_champions_features(champions_clean: pd.DataFrame,
 
 
 def create_matches_features(matches_clean: pd.DataFrame, 
-                           params: Dict[str, Any]) -> pd.DataFrame:
+                           feature_engineering_params: Dict[str, Any]) -> pd.DataFrame:
     """
     Crea características derivadas para partidos.
     
@@ -299,24 +333,53 @@ def create_matches_features(matches_clean: pd.DataFrame,
     
     df = matches_clean.copy()
     
-    # 1. Calcular diferencia de kills
-    df['kill_difference'] = df['team1_kills'] - df['team2_kills']
+    # Buscar columnas relacionadas con equipos
+    blue_team_cols = [col for col in df.columns if 'blue_team' in col.lower()]
+    red_team_cols = [col for col in df.columns if 'red_team' in col.lower()]
     
-    # 2. Calcular diferencia de gold
-    df['gold_difference'] = df['team1_gold'] - df['team2_gold']
+    # Crear características básicas si hay datos suficientes
+    if len(blue_team_cols) > 0 and len(red_team_cols) > 0:
+        df['has_blue_team'] = 1
+        df['has_red_team'] = 1
+        df['teams_balanced'] = 1  # Asumir que los equipos están balanceados
     
-    # 3. Calcular kills por minuto
-    df['team1_kpm'] = df['team1_kills'] / (df['duration'] / 60)
-    df['team2_kpm'] = df['team2_kills'] / (df['duration'] / 60)
+    # Crear características de picks/bans si existen
+    pick_cols = [col for col in df.columns if 'pick' in col.lower()]
+    ban_cols = [col for col in df.columns if 'ban' in col.lower()]
     
-    # 4. Calcular gold por minuto
-    df['team1_gpm'] = df['team1_gold'] / (df['duration'] / 60)
-    df['team2_gpm'] = df['team2_gold'] / (df['duration'] / 60)
+    if pick_cols:
+        df['total_picks'] = len(pick_cols)
+        df['picks_per_team'] = len(pick_cols) / 2
     
-    # 5. Categorizar duración del partido
-    df['game_length_category'] = pd.cut(df['duration'], 
-                                       bins=[0, 25, 35, 45, float('inf')], 
-                                       labels=['Corto', 'Normal', 'Largo', 'Muy Largo'])
+    if ban_cols:
+        df['total_bans'] = len(ban_cols)
+        df['bans_per_team'] = len(ban_cols) / 2
+    
+    # Crear características de temporada si existe
+    if 'season' in df.columns:
+        df['season_numeric'] = pd.to_numeric(df['season'], errors='coerce')
+        df['is_recent_season'] = df['season_numeric'] >= 2020
+    
+    # Crear características de fecha si existe
+    if 'date' in df.columns:
+        df['date'] = pd.to_datetime(df['date'], errors='coerce')
+        df['year'] = df['date'].dt.year
+        df['month'] = df['date'].dt.month
+        df['day_of_year'] = df['date'].dt.dayofyear
+    
+    # Crear características de evento si existe
+    if 'event' in df.columns:
+        # Convertir a string primero si no lo es
+        df['event'] = df['event'].astype(str)
+        df['event_length'] = df['event'].str.len()
+        df['is_worlds'] = df['event'].str.contains('worlds', case=False, na=False)
+    
+    # Crear características de patch si existe
+    if 'patch' in df.columns:
+        # Convertir a string primero si no lo es
+        df['patch'] = df['patch'].astype(str)
+        df['patch_numeric'] = pd.to_numeric(df['patch'].str.extract(r'(\d+\.\d+)')[0], errors='coerce')
+        df['is_recent_patch'] = df['patch_numeric'] >= 11.0
     
     print(f"✅ Características de partidos creadas: {df.shape}")
     
@@ -324,7 +387,7 @@ def create_matches_features(matches_clean: pd.DataFrame,
 
 
 def create_players_features(players_clean: pd.DataFrame, 
-                           params: Dict[str, Any]) -> pd.DataFrame:
+                           feature_engineering_params: Dict[str, Any]) -> pd.DataFrame:
     """
     Crea características derivadas para jugadores.
     
@@ -339,22 +402,47 @@ def create_players_features(players_clean: pd.DataFrame,
     
     df = players_clean.copy()
     
-    # 1. Calcular KDA
-    df['kda'] = (df['kills'] + df['assists']) / np.maximum(df['deaths'], 1)
+    # 1. Calcular KDA (adaptativo)
+    if 'kills' in df.columns and 'deaths' in df.columns and 'assists' in df.columns:
+        df['kda'] = (df['kills'] + df['assists']) / np.maximum(df['deaths'], 1)
+    elif 'kill_death_assist_ratio' in df.columns:
+        df['kda'] = df['kill_death_assist_ratio']
     
-    # 2. Calcular eficiencia del jugador
-    df['player_efficiency'] = df['kda'] * df['win']
+    # 2. Calcular eficiencia del jugador (adaptativo)
+    if 'kda' in df.columns:
+        if 'win' in df.columns:
+            df['player_efficiency'] = df['kda'] * df['win']
+        elif 'wins' in df.columns:
+            df['player_efficiency'] = df['kda'] * df['wins']
+        elif 'win_rate' in df.columns:
+            df['player_efficiency'] = df['kda'] * (df['win_rate'] / 100)
+        else:
+            df['player_efficiency'] = df['kda']
     
-    # 3. Calcular participación en kills
-    df['kill_participation'] = (df['kills'] + df['assists']) / np.maximum(df['kills'] + df['deaths'] + df['assists'], 1)
+    # 3. Calcular participación en kills (adaptativo)
+    if 'kills' in df.columns and 'assists' in df.columns and 'deaths' in df.columns:
+        df['kill_participation'] = (df['kills'] + df['assists']) / np.maximum(df['kills'] + df['deaths'] + df['assists'], 1)
+    elif 'kill_participation' in df.columns:
+        # Ya existe la columna
+        pass
     
-    # 4. Calcular impacto económico
-    df['economic_impact'] = df['gold'] / np.maximum(df['damage'], 1)
+    # 4. Calcular impacto económico (adaptativo)
+    if 'gold' in df.columns and 'damage' in df.columns:
+        df['economic_impact'] = df['gold'] / np.maximum(df['damage'], 1)
+    elif 'gold' in df.columns:
+        df['economic_impact'] = df['gold']
+    elif 'damage' in df.columns:
+        df['economic_impact'] = df['damage']
     
-    # 5. Categorizar rendimiento
-    df['performance_tier'] = pd.cut(df['player_efficiency'], 
-                                  bins=[0, 1, 2, 3, float('inf')], 
-                                  labels=['Bajo', 'Promedio', 'Alto', 'Élite'])
+    # 5. Categorizar rendimiento (adaptativo)
+    if 'player_efficiency' in df.columns:
+        df['performance_tier'] = pd.cut(df['player_efficiency'], 
+                                      bins=[0, 1, 2, 3, float('inf')], 
+                                      labels=['Bajo', 'Promedio', 'Alto', 'Élite'])
+    elif 'kda' in df.columns:
+        df['performance_tier'] = pd.cut(df['kda'], 
+                                      bins=[0, 1, 2, 3, float('inf')], 
+                                      labels=['Bajo', 'Promedio', 'Alto', 'Élite'])
     
     print(f"✅ Características de jugadores creadas: {df.shape}")
     
@@ -399,7 +487,7 @@ def consolidate_datasets(champions_features: pd.DataFrame,
 def create_final_dataset(champions_features: pd.DataFrame,
                              matches_features: pd.DataFrame,
                         players_features: pd.DataFrame,
-                        params: Dict[str, Any]) -> pd.DataFrame:
+                        modeling_params: Dict[str, Any]) -> pd.DataFrame:
     """
     Crea el dataset final para modelado.
     
@@ -414,15 +502,71 @@ def create_final_dataset(champions_features: pd.DataFrame,
     """
     print("🎯 Creando dataset final para ML...")
     
-    # Seleccionar características más relevantes para cada dataset
-    champions_ml = champions_features[['champion', 'win_rate', 'kda_enhanced', 'efficiency_score', 'impact_score']].copy()
-    champions_ml['dataset_type'] = 'champion'
+    # Seleccionar características más relevantes para cada dataset (adaptativo)
     
-    matches_ml = matches_features[['duration', 'kill_difference', 'gold_difference', 'team1_kpm', 'team2_kpm']].copy()
-    matches_ml['dataset_type'] = 'match'
+    # Champions ML - usar columnas disponibles
+    champion_cols = []
+    if 'champion' in champions_features.columns:
+        champion_cols.append('champion')
+    if 'win_rate' in champions_features.columns:
+        champion_cols.append('win_rate')
+    if 'kda_enhanced' in champions_features.columns:
+        champion_cols.append('kda_enhanced')
+    elif 'kda' in champions_features.columns:
+        champion_cols.append('kda')
+    if 'efficiency_score' in champions_features.columns:
+        champion_cols.append('efficiency_score')
+    if 'impact_score' in champions_features.columns:
+        champion_cols.append('impact_score')
     
-    players_ml = players_features[['player', 'kda', 'player_efficiency', 'kill_participation', 'economic_impact']].copy()
-    players_ml['dataset_type'] = 'player'
+    if champion_cols:
+        champions_ml = champions_features[champion_cols].copy()
+        champions_ml['dataset_type'] = 'champion'
+    else:
+        champions_ml = pd.DataFrame({'dataset_type': ['champion']})
+    
+    # Matches ML - usar columnas disponibles
+    match_cols = []
+    if 'duration' in matches_features.columns:
+        match_cols.append('duration')
+    if 'kill_difference' in matches_features.columns:
+        match_cols.append('kill_difference')
+    if 'gold_difference' in matches_features.columns:
+        match_cols.append('gold_difference')
+    if 'team1_kpm' in matches_features.columns:
+        match_cols.append('team1_kpm')
+    if 'team2_kpm' in matches_features.columns:
+        match_cols.append('team2_kpm')
+    
+    # Si no hay columnas específicas, usar las primeras 5 columnas numéricas
+    if not match_cols:
+        numeric_cols = matches_features.select_dtypes(include=[np.number]).columns
+        match_cols = numeric_cols[:5].tolist()
+    
+    if match_cols:
+        matches_ml = matches_features[match_cols].copy()
+        matches_ml['dataset_type'] = 'match'
+    else:
+        matches_ml = pd.DataFrame({'dataset_type': ['match']})
+    
+    # Players ML - usar columnas disponibles
+    player_cols = []
+    if 'player' in players_features.columns:
+        player_cols.append('player')
+    if 'kda' in players_features.columns:
+        player_cols.append('kda')
+    if 'player_efficiency' in players_features.columns:
+        player_cols.append('player_efficiency')
+    if 'kill_participation' in players_features.columns:
+        player_cols.append('kill_participation')
+    if 'economic_impact' in players_features.columns:
+        player_cols.append('economic_impact')
+    
+    if player_cols:
+        players_ml = players_features[player_cols].copy()
+        players_ml['dataset_type'] = 'player'
+    else:
+        players_ml = pd.DataFrame({'dataset_type': ['player']})
     
     # Crear dataset final combinado
     final_dataset = pd.concat([champions_ml, matches_ml, players_ml], ignore_index=True)
@@ -438,7 +582,7 @@ def create_final_dataset(champions_features: pd.DataFrame,
 def generate_eda_report(champions_features: pd.DataFrame,
                    matches_features: pd.DataFrame,
                         players_features: pd.DataFrame,
-                        params: Dict[str, Any]) -> str:
+                        params: Dict[str, Any]) -> pd.DataFrame:
     """
     Genera reporte de análisis exploratorio de datos.
     
@@ -449,14 +593,11 @@ def generate_eda_report(champions_features: pd.DataFrame,
         params: Parámetros del proyecto
         
     Returns:
-        str: Reporte de EDA
+        pd.DataFrame: Reporte de EDA como DataFrame
     """
     print("📊 Generando reporte de EDA...")
     
-    report = "=== REPORTE DE ANÁLISIS EXPLORATORIO DE DATOS ===\n\n"
-    
-    # Análisis univariado
-    report += "📈 ANÁLISIS UNIVARIADO:\n"
+    eda_data = []
     
     datasets = {
         'Champions': champions_features,
@@ -465,39 +606,52 @@ def generate_eda_report(champions_features: pd.DataFrame,
     }
     
     for name, df in datasets.items():
-        report += f"\n{name}:\n"
         numeric_cols = df.select_dtypes(include=[np.number]).columns
         
         for col in numeric_cols[:5]:  # Primeras 5 columnas numéricas
             stats = df[col].describe()
-            report += f"  {col}:\n"
-            report += f"    Media: {stats['mean']:.2f}\n"
-            report += f"    Mediana: {stats['50%']:.2f}\n"
-            report += f"    Desv. Estándar: {stats['std']:.2f}\n"
-            report += f"    Rango: {stats['min']:.2f} - {stats['max']:.2f}\n"
+            eda_data.append({
+                'Dataset': name,
+                'Variable': col,
+                'Media': round(stats['mean'], 2),
+                'Mediana': round(stats['50%'], 2),
+                'Desv_Estandar': round(stats['std'], 2),
+                'Minimo': round(stats['min'], 2),
+                'Maximo': round(stats['max'], 2),
+                'Tipo_Analisis': 'Univariado'
+            })
     
     # Análisis bivariado
-    report += "\n\n📊 ANÁLISIS BIVARIADO:\n"
-    
     if 'win_rate' in champions_features.columns and 'efficiency_score' in champions_features.columns:
         correlation = champions_features['win_rate'].corr(champions_features['efficiency_score'])
-        report += f"Correlación Win Rate vs Efficiency Score (Champions): {correlation:.3f}\n"
+        eda_data.append({
+            'Dataset': 'Champions',
+            'Variable': 'win_rate vs efficiency_score',
+            'Media': correlation,
+            'Mediana': correlation,
+            'Desv_Estandar': 0,
+            'Minimo': correlation,
+            'Maximo': correlation,
+            'Tipo_Analisis': 'Bivariado'
+        })
     
     if 'kda' in players_features.columns and 'player_efficiency' in players_features.columns:
         correlation = players_features['kda'].corr(players_features['player_efficiency'])
-        report += f"Correlación KDA vs Player Efficiency: {correlation:.3f}\n"
+        eda_data.append({
+            'Dataset': 'Players',
+            'Variable': 'kda vs player_efficiency',
+            'Media': correlation,
+            'Mediana': correlation,
+            'Desv_Estandar': 0,
+            'Minimo': correlation,
+            'Maximo': correlation,
+            'Tipo_Analisis': 'Bivariado'
+        })
     
-    # Análisis multivariado
-    report += "\n\n🔍 ANÁLISIS MULTIVARIADO:\n"
+    eda_df = pd.DataFrame(eda_data)
+    print(f"✅ Reporte de EDA generado: {eda_df.shape}")
     
-    # Matriz de correlaciones para champions
-    if len(champions_features.select_dtypes(include=[np.number]).columns) > 1:
-        corr_matrix = champions_features.select_dtypes(include=[np.number]).corr()
-        high_corr = corr_matrix[abs(corr_matrix) > params['analysis']['correlation_threshold']]
-        report += f"Correlaciones altas en Champions (> {params['analysis']['correlation_threshold']}):\n"
-        report += f"{high_corr.to_string()}\n"
-    
-    return report
+    return eda_df
 
 
 def identify_ml_targets(champions_features: pd.DataFrame,
